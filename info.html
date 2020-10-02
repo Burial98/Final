@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+    <title>Captcha-Type</title>
+        <link rel="icon" href="favicon.ico">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link type="text/css" rel="stylesheet" href="main.css">
+        
+</head>
+
+<body>
+    <div class="info">Captcha-Type is a typographic Project exploring different ways of text distortion in the context of a world where it is increasingly hard to distinguish between computers and humans.
+        <br>
+        <br>
+        <span class="CAPTCHA">CAPTCHA</span> is short for 'Completely Automated Public Turing Test to Tell Computers and Humans Apart'. It’s an algorithm designed to figure out if a user is a person or a bot. Everybody at some point probably encountered them browsing the web: It’s a plain looking box displaying an image of several distorted letters. Youre task is to figure out the correct series of letters, type them and if they match the distorted image, you pass the test.
+        <br>
+        <br>
+        There are different kinds of CAPTCHA Tests. Some Tests use distorted letters while other ask the user to pick specific pictures. Most CAPTCHAs therefore rely on visual recognition, because computers lack the sophistication that human beings have when it comes to processing visual data. We can look at an image and pick out patterns more easily than a computer.
+
+        <br>
+        <br>
+        People who design CAPTCHA Tests aren’t upset when their tests fail. That’s because for a CAPTCHA test to fail, someone has to find a way to teach a computer how to solve the test. In other words, every CAPTCHA failure is really an advance in artificial intelligence.
+        <br>
+        <br>
+        It’s interesting to think that we are already getting screened and tested on a somewhat daily basis if we are a computer or not. With the acceleration of artificial intelligence someone can just wonder how CAPTCHA Tests will advance in the future and what will be the consequences when the line between humans and computers gets so narrow, that distinguishing them will be simply impossible.
+    </div>
+    <div class="Development">Concept and Development by Alexander Vieten
+        <br>
+        Student at the Munich University of Applied Sciences
+        <br>
+        204 Typography, SoSe 2020, FK12
+
+    </div>
+
+
+    <div class="bottom-container">
+        <a class="footer-link" href="index.html">back</a>
+
+    </div>
+
+
+
+    <video id="video" loop muted crossOrigin="anonymous" playsinline style="display:none">
+
+        <source src="people_2.mp4">
+    </video>
+
+    <script id="vs" type="x-shader/x-vertex">
+
+        uniform sampler2D map;
+
+			uniform float width;
+			uniform float height;
+			uniform float nearClipping, farClipping;
+
+			uniform float pointSize;
+			uniform float zOffset;
+
+			varying vec2 vUv;
+
+			const float XtoZ = 1.11146; // tan( 1.0144686 / 2.0 ) * 2.0;
+			const float YtoZ = 0.83359; // tan( 0.7898090 / 2.0 ) * 2.0;
+
+			void main() {
+
+				vUv = vec2( position.x / width, position.y / height );
+
+				vec4 color = texture2D( map, vUv );
+				float depth = ( color.r + color.g + color.b ) / 3.0;
+
+				// Projection code by @kcmic
+
+				float z = ( 1.0 - depth ) * (farClipping - nearClipping) + nearClipping;
+
+				vec4 pos = vec4(
+					( position.x / width - 0.5 ) * z * XtoZ,
+					( position.y / height - 0.5 ) * z * YtoZ,
+					- z + zOffset,
+					1.0);
+
+				gl_PointSize = pointSize;
+				gl_Position = projectionMatrix * modelViewMatrix * pos;
+
+			}
+
+		</script>
+
+    <script id="fs" type="x-shader/x-fragment">
+
+        uniform sampler2D map;
+
+			varying vec2 vUv;
+
+			void main() {
+
+				vec4 color = texture2D( map, vUv );
+				gl_FragColor = vec4( color.r, color.g, color.b, 0.2 );
+
+			}
+
+		</script>
+
+    <script type="module">
+
+
+
+        import * as THREE from '/three.module.js';
+
+
+			var container;
+
+			var scene, camera, renderer;
+			var geometry, mesh, material;
+			var mouse, center;
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				var info = document.createElement( 'div' );
+				info.id = 'info';
+				info.innerHTML = '';
+                
+				document.body.appendChild( info );
+
+				camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 10000 );
+				camera.position.set( 0, 0, 500);
+
+				scene = new THREE.Scene();
+				center = new THREE.Vector3();
+				center.z = - 1000;
+
+				var video = document.getElementById( 'video' );
+				video.addEventListener( 'loadedmetadata', function () {
+
+					var texture = new THREE.VideoTexture( video );
+					texture.minFilter = THREE.NearestFilter;
+
+					var width = 640, height = 1500;
+					var nearClipping = 1400, farClipping = 4000;
+
+					geometry = new THREE.BufferGeometry();
+
+					var vertices = new Float32Array( width * height * 3 );
+
+					for ( var i = 0, j = 0, l = vertices.length; i < l; i += 3, j ++ ) {
+
+						vertices[ i ] = j % width;
+						vertices[ i + 1 ] = Math.floor( j / width );
+
+					}
+
+					geometry.setAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+
+					material = new THREE.ShaderMaterial( {
+
+						uniforms: {
+
+							"map": { value: texture },
+							"width": { value: width },
+							"height": { value: height },
+							"nearClipping": { value: nearClipping },
+							"farClipping": { value: farClipping },
+
+							"pointSize": { value: 3 },
+							"zOffset": { value: 1000 }
+
+						},
+						vertexShader: document.getElementById( 'vs' ).textContent,
+						fragmentShader: document.getElementById( 'fs' ).textContent,
+						blending: THREE.AdditiveBlending,
+						depthTest: false, depthWrite: false,
+						transparent: true
+
+					} );
+
+					mesh = new THREE.Points( geometry, material );
+					scene.add( mesh );
+
+				
+
+
+				}, false );
+
+				video.play();
+
+				renderer = new THREE.WebGLRenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+
+				mouse = new THREE.Vector3( 0, 0, 1 );
+
+				
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+		
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				render();
+
+			}
+
+			function render() {
+
+				camera.position.x += ( mouse.x - camera.position.x ) * 0.05;
+				camera.position.y += ( - mouse.y - camera.position.y ) * 0.05;
+				camera.lookAt( center );
+
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+</body></html>
